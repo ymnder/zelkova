@@ -3,8 +3,12 @@ package com.ymnd.android.processor
 import com.google.auto.common.BasicAnnotationProcessor
 import com.google.auto.service.AutoService
 import com.google.common.collect.SetMultimap
-import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.asTypeName
 import com.ymnd.android.annotation.Builder
+import com.ymnd.android.annotation.DefaultValue
 import java.io.File
 import javax.annotation.processing.Messager
 import javax.annotation.processing.Processor
@@ -41,61 +45,56 @@ class BuilderProcessor : BasicAnnotationProcessor() {
 
 class BuilderProcessingStep(private val elements: Elements, private val messager: Messager, private val outputDir: File) : BasicAnnotationProcessor.ProcessingStep {
 
-    override fun annotations() = setOf(Builder::class.java)
+    override fun annotations() = setOf(
+            Builder::class.java,
+            DefaultValue::class.java
+    )
 
     override fun process(elementsByAnnotation: SetMultimap<Class<out Annotation>, Element>?): MutableSet<Element> {
         elementsByAnnotation ?: return mutableSetOf()
 
-        val filteredElements = elementsByAnnotation.asMap().filter {
-            it.key == Builder::class.java
-        }
+        elementsByAnnotation[Builder::class.java]?.forEach {
+            if (it.kind != ElementKind.CLASS) throw IllegalArgumentException("this annotation only class @${Builder::class.java.simpleName}")
 
-        filteredElements[Builder::class.java]?.forEach {
-            val klassBuilder = TypeSpec
+            val typeSpecBuilder = TypeSpec
                     .classBuilder("${it.simpleName}Builder")
 
-            val elementArray = arrayListOf<String>()
-            it.enclosedElements.forEach { element ->
-                if (element.kind == ElementKind.FIELD) {
-                    elementArray.add("${element.simpleName}")
-                    // TypeName as ClassNameはダウンキャストだから危ない
-                    val className = convertClassNameAsKotlin(element.asType().asTypeName() as ClassName)
-                    klassBuilder
-                            .addProperty(
-                                    PropertySpec.varBuilder("${element.simpleName}", className)
-                                            .addModifiers(KModifier.PRIVATE, KModifier.LATEINIT)
-                                            .build())
-                            .addFunction(
-                                    FunSpec.builder("${element.simpleName}")
-                                            .addParameter("${element.simpleName}", className)
-                                            .addStatement("return apply{ this.${element.simpleName} = ${element.simpleName} }")
-                                            .build())
+
+            val annotatedFieldElements = elementsByAnnotation[DefaultValue::class.java]
+
+            val builderFields = it.enclosedElements.mapNotNull { fieldElement ->
+                if (fieldElement.kind == ElementKind.FIELD) {
+                    return@mapNotNull BuilderField(fieldElement,
+                            annotatedFieldElements.firstOrNull { afe -> "${afe.simpleName}" == "${fieldElement.simpleName}\$annotations" }
+                    )
+                } else {
+                    return@mapNotNull null
                 }
             }
-            klassBuilder.addFunction(
+
+            builderFields.forEach { field ->
+                field.addSpec(typeSpecBuilder)
+            }
+
+            val allFields = builderFields.joinToString { field -> field.simpleNameString }
+
+            typeSpecBuilder.addFunction(
                     FunSpec.builder("build")
-                            .addStatement("return %T(${elementArray.joinToString()})", it.asType().asTypeName())
+                            .addStatement("return %T($allFields)", it.asType().asTypeName())
                             .build()
             )
-            factory(klassBuilder)
+            factory(typeSpecBuilder)
         }
 
         return mutableSetOf()
     }
 
-    private fun factory(klassBuilder: TypeSpec.Builder) {
-        val typeSpec = klassBuilder.build()
+    private fun factory(typeSpecBuilder: TypeSpec.Builder) {
+        val typeSpec = typeSpecBuilder.build()
         FileSpec.builder(PACKAGE_NAME, typeSpec.name!!)
                 .addType(typeSpec)
                 .build()
                 .writeTo(outputDir)
-    }
-
-    private fun convertClassNameAsKotlin(className: ClassName): ClassName {
-        return when (className.canonicalName) {
-            String::class.java.name -> String::class.asClassName()
-            else -> className
-        }
     }
 
     companion object {

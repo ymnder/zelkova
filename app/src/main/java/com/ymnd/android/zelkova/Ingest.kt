@@ -8,8 +8,12 @@ data class Ingest(
         @DefaultValue(defaultValue = true)
         var index: Int,
         @DefaultValue
-        var category: Long,
+        val category: Long,
         @DefaultValue(defaultValue = false)
         var name: String,
-        val action: String
+        val action: Action
+)
+
+data class Action(
+        val id: Int
 )

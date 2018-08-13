@@ -6,7 +6,7 @@ import com.ymnd.android.annotation.DefaultValue
 @Builder
 data class Ingest(
         @DefaultValue(defaultValue = true)
-        var index: Int,
+        var index: Int?,
         @DefaultValue
         val category: Long,
         @DefaultValue(defaultValue = false)

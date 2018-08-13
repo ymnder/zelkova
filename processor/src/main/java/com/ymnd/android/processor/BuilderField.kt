@@ -16,14 +16,16 @@ class BuilderField(
     // TypeName as ClassNameはダウンキャストだから危ない
     private val className = convertClassNameAsKotlin(fieldElement.asType().asTypeName() as ClassName)
 
+    fun createParamSpec(): ParameterSpec? {
+        if (!isVal) return null
+        return ParameterSpec
+                .builder(simpleNameString, className)
+                .build()
+    }
+
     private fun createPropertySpec(typeSpecBuilder: TypeSpec.Builder) {
         if (isVal) {
             typeSpecBuilder
-                    .primaryConstructor(
-                            FunSpec.constructorBuilder()
-                                    .addParameter(simpleNameString, className)
-                                    .build()
-                    )
                     .addProperty(
                             PropertySpec.builder(simpleNameString, className)
                                     .addModifiers(KModifier.PRIVATE)
@@ -51,8 +53,10 @@ class BuilderField(
 
     fun addSpec(typeSpecBuilder: TypeSpec.Builder): TypeSpec.Builder {
         return typeSpecBuilder
-                .apply { createPropertySpec(this) }
-                .apply { createFunctionSpec(this) }
+                .apply {
+                    createPropertySpec(this)
+                    createFunctionSpec(this)
+                }
     }
 
     private fun convertClassNameAsKotlin(className: ClassName): ClassName {

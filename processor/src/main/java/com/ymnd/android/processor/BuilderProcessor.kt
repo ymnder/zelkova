@@ -72,6 +72,13 @@ class BuilderProcessingStep(private val elements: Elements, private val messager
                 }
             }
 
+            val constructorField = builderFields.mapNotNull { it.createParamSpec() }
+            typeSpecBuilder.primaryConstructor(
+                    FunSpec.constructorBuilder()
+                            .addParameters(constructorField)
+                            .build()
+            )
+
             builderFields.forEach { field ->
                 field.addSpec(typeSpecBuilder)
             }

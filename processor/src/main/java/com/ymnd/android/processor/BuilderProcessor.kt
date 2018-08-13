@@ -19,17 +19,17 @@ class BuilderProcessor : BasicAnnotationProcessor() {
         private const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
     }
 
-    override fun getSupportedSourceVersion() = SourceVersion.latestSupported()!!
+    override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.latestSupported()
 
     override fun getSupportedOptions() = setOf(KAPT_KOTLIN_GENERATED_OPTION_NAME)
 
-    override fun initSteps(): MutableIterable<ProcessingStep> {
+    override fun initSteps(): Iterable<ProcessingStep> {
         val outputDirectory = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
                 ?.replace("kaptKotlin", "kapt")
                 ?.let { File(it) }
-                ?: throw IllegalArgumentException("No output directory!")
+                ?: throw IllegalArgumentException("No output directory...")
 
-        return mutableListOf(
+        return listOf(
                 BuilderProcessingStep(
                         elements = processingEnv.elementUtils,
                         messager = processingEnv.messager,

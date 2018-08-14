@@ -9,11 +9,11 @@ class BuilderField(
         private val annotatedFieldElement: Element?
 ) {
 
-    private val isVal: Boolean = Modifier.FINAL in this.fieldElement.modifiers
+    internal val isVal: Boolean = Modifier.FINAL in this.fieldElement.modifiers
     private val isDefaultValue = this.annotatedFieldElement != null
     private val isPrimitive = checkPrimitive(fieldElement.asType().asTypeName() as ClassName)
     private val isNullable = this.fieldElement.asType().asTypeName().nullable
-    val simpleName = fieldElement.simpleName
+    internal val simpleName = fieldElement.simpleName
     internal val simpleNameString = "$simpleName"
     // TypeName as ClassNameはダウンキャストだから危ない
     private val className = convertClassNameAsKotlin(fieldElement.asType().asTypeName() as ClassName)

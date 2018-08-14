@@ -3,10 +3,7 @@ package com.ymnd.android.processor
 import com.google.auto.common.BasicAnnotationProcessor
 import com.google.auto.service.AutoService
 import com.google.common.collect.SetMultimap
-import com.squareup.kotlinpoet.FileSpec
-import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.asTypeName
+import com.squareup.kotlinpoet.*
 import com.ymnd.android.annotation.Builder
 import com.ymnd.android.annotation.DefaultValue
 import java.io.File
@@ -58,6 +55,7 @@ class BuilderProcessingStep(private val elements: Elements, private val messager
 
             val typeSpecBuilder = TypeSpec
                     .classBuilder("${it.simpleName}Builder")
+                    .addModifiers(KModifier.OPEN)
 
 
             val annotatedFieldElements = elementsByAnnotation[DefaultValue::class.java]
@@ -90,18 +88,48 @@ class BuilderProcessingStep(private val elements: Elements, private val messager
                             .addStatement("return %T($allFields)", it.asType().asTypeName())
                             .build()
             )
-            factory(typeSpecBuilder)
+//addRows: ListBuilderDsl.() -> Unit
+//            + "," //これは自動で追加されるべきだ
+//            + "f: ${it.simpleName}BuilderDsl.() -> Unit"
+            val lambdaTypeName = LambdaTypeName.get(receiver = ClassName(PACKAGE_NAME,"${it.simpleName}BuilderDsl"), returnType = Unit::class.java.asTypeName())
+            val lambda = ParameterSpec.builder("f", lambdaTypeName).build()
+
+            //あとで直す
+            val typeSpec = typeSpecBuilder.build()
+            FileSpec.builder(PACKAGE_NAME, typeSpec.name!!)
+                    .addType(typeSpec)
+                    .addType(
+                            TypeSpec.classBuilder("${it.simpleName}BuilderDsl")
+                                    .superclass(ClassName(PACKAGE_NAME, "${it.simpleName}Builder"))
+                                    .addSuperclassConstructorParameter(superClassConstructor(builderFields.filter { it.isVal }))
+                                    .primaryConstructor(FunSpec.constructorBuilder()
+                                            .addParameters(constructorField)
+                                            .build())
+                                    .build()
+                    )
+                    .addFunction(
+                            FunSpec.builder("${it.simpleName}Builder".decapitalize())
+                                    .addModifiers(KModifier.INLINE)
+                                    .addParameters(constructorField)
+                                    .addParameter(lambda)
+                                    .addStatement(
+                                            "return "
+                                                    + "${it.simpleName}BuilderDsl("
+                                                    + superClassConstructor(builderFields.filter { it.isVal })
+                                                    + ").apply{ f() }"
+                                                    + ".build()")
+                                    .build())
+                    .build()
+                    .writeTo(outputDir)
         }
 
         return mutableSetOf()
     }
 
-    private fun factory(typeSpecBuilder: TypeSpec.Builder) {
-        val typeSpec = typeSpecBuilder.build()
-        FileSpec.builder(PACKAGE_NAME, typeSpec.name!!)
-                .addType(typeSpec)
-                .build()
-                .writeTo(outputDir)
+    private fun superClassConstructor(builderFields: List<BuilderField>): String {
+        return builderFields
+                .mapNotNull { it.simpleName }
+                .joinToString()
     }
 
     companion object {

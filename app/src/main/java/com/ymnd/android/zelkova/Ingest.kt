@@ -3,7 +3,7 @@ package com.ymnd.android.zelkova
 import com.ymnd.android.annotation.Builder
 import com.ymnd.android.annotation.DefaultValue
 
-@Builder
+//@Builder
 data class Ingest(
         @DefaultValue(defaultValue = true)
         var index: Int?,
@@ -11,7 +11,8 @@ data class Ingest(
         val category: Long,
         @DefaultValue(defaultValue = false)
         var name: String,
-        val action: Action
+        val action: Action,
+        var id: Long
 )
 
 data class Action(

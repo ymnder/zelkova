@@ -9,13 +9,15 @@ class BuilderField(
         private val annotatedFieldElement: Element?
 ) {
 
+    private val typeConverter = TypeConverter()
+    private val type = typeConverter.convert(fieldElement)
     internal val isVal: Boolean = Modifier.FINAL in this.fieldElement.modifiers
     private val isDefaultValue = this.annotatedFieldElement != null
-    private val isPrimitive = Type.isPrimitive(fieldElement.asType().asTypeName() as ClassName)
+    private val isPrimitive = type.isPrimitive
     private val isNullable = fieldElement.isNullable()
     internal val simpleName = fieldElement.simpleName
     internal val simpleNameString = "$simpleName"
-    private val className = Type.of(fieldElement.asType().asTypeName() as ClassName).let { if (isNullable) it.asNullable() else it }
+    private val className = type.typeName.let { if (isNullable) it.asNullable() else it }
 
     fun createParamSpec(): ParameterSpec? {
         if (!isVal) return null
@@ -34,11 +36,11 @@ class BuilderField(
                                     .build()
                     )
         } else {
-            if (isDefaultValue) {
+            if (isDefaultValue && type.typeName is ClassName) {
                 typeSpecBuilder.addProperty(
                         PropertySpec.varBuilder(simpleNameString, className)
                                 .addModifiers(KModifier.PRIVATE)
-                                .initializer("${Type.getDefaultValue(fieldElement.asType().asTypeName() as ClassName)}")
+                                .initializer("${type.defaultValue}")
                                 .build()
                 )
             } else {

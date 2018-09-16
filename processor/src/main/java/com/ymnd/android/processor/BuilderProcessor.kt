@@ -6,6 +6,8 @@ import com.google.common.collect.SetMultimap
 import com.squareup.kotlinpoet.*
 import com.ymnd.android.annotation.Builder
 import com.ymnd.android.annotation.DefaultValue
+import me.eugeniomarletti.kotlin.metadata.shadow.name.FqName
+import me.eugeniomarletti.kotlin.metadata.shadow.platform.JavaToKotlinClassMap
 import java.io.File
 import javax.annotation.processing.Messager
 import javax.annotation.processing.Processor
@@ -14,7 +16,7 @@ import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
 import javax.lang.model.util.Elements
 
-@AutoService(Processor::class)
+//@AutoService(Processor::class)
 class BuilderProcessor : BasicAnnotationProcessor() {
     companion object {
         private const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"

@@ -3,7 +3,7 @@ package com.ymnd.android.zelkova
 import android.app.Activity
 import com.ymnd.android.annotation.Builder
 
-@Builder
+//@Builder
 data class ComplicatedIngest(
 //        var index: List<Int>?,
         var case: Map<String, Any?>,

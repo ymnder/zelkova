@@ -2,7 +2,7 @@ package com.ymnd.android.zelkova
 
 import com.ymnd.android.annotation.Builder
 
-@Builder
+//@Builder
 data class KTypes(
         var byteVal: Byte,
         var byteNull: Byte?,

@@ -46,20 +46,20 @@ class KotlinBuilderProcessor : AbstractProcessor() {
 
         val metaData = (targetElement.kotlinMetadata as KotlinClassMetadata).data
         val properties: List<ProtoBuf.Property> = metaData.classProto.propertyList
-        val fieldTypes: List<FieldType> = properties.map { property ->
-            FieldType(property, metaData)
+        val propertyTypes: List<PropertyType> = properties.map { property ->
+            PropertyType(property, metaData)
         }
 
         val typeSpecBuilder = TypeSpec
                 .classBuilder(fileName)
                 .addModifiers(KModifier.OPEN)
 
-        fieldTypes.forEach { fieldType ->
+        propertyTypes.forEach { propertyType ->
             typeSpecBuilder.addProperty(
-                    PropertySpec.varBuilder(fieldType.fieldName, fieldType.className)
+                    PropertySpec.varBuilder(propertyType.fieldName, propertyType.className)
                             .addModifiers(KModifier.PRIVATE)
                             .apply {
-                                if (fieldType.nullable) {
+                                if (propertyType.nullable) {
                                     this.initializer("null")
                                 } else {
                                     this.delegate("kotlin.properties.Delegates.notNull()")
@@ -69,29 +69,29 @@ class KotlinBuilderProcessor : AbstractProcessor() {
             )
 
             typeSpecBuilder.addFunction(
-                    FunSpec.builder(fieldType.fieldName)
-                            .addParameter(fieldType.fieldName, fieldType.className)
+                    FunSpec.builder(propertyType.fieldName)
+                            .addParameter(propertyType.fieldName, propertyType.className)
                             .addStatement("return apply { this.%N = %N }",
-                                    fieldType.fieldName, fieldType.fieldName
+                                    propertyType.fieldName, propertyType.fieldName
                             )
                             .build()
             )
         }
 
-        val fieldNames = arrayListOf<String>().apply {
-            fieldTypes.forEach { fieldType ->
-                val fieldName = fieldType.fieldName
-                add(fieldName)
-                add(fieldName)
+        val propertyNames = arrayListOf<String>().apply {
+            propertyTypes.forEach { propertyType ->
+                val propertyName = propertyType.fieldName
+                add(propertyName)
+                add(propertyName)
             }
         }
 
         typeSpecBuilder.addFunction(
                 FunSpec.builder("build")
-                        .addStatement("return %T(" + Collections.nCopies(fieldTypes.size, "%N = %N")
+                        .addStatement("return %T(" + Collections.nCopies(propertyTypes.size, "%N = %N")
                                 .joinToString() + ")",
                                 targetClassName,
-                                *fieldNames.toTypedArray()
+                                *propertyNames.toTypedArray()
                         )
                         .build()
         )
@@ -129,7 +129,7 @@ class KotlinBuilderProcessor : AbstractProcessor() {
 
     }
 
-    class FieldType(
+    class PropertyType(
             property: ProtoBuf.Property,
             metaData: ClassData
     ) {

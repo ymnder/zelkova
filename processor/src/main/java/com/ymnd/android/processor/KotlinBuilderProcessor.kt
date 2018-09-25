@@ -9,7 +9,6 @@ import me.eugeniomarletti.kotlin.metadata.extractFullName
 import me.eugeniomarletti.kotlin.metadata.kotlinMetadata
 import me.eugeniomarletti.kotlin.metadata.shadow.metadata.ProtoBuf
 import java.io.File
-import java.util.*
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.Processor
 import javax.annotation.processing.RoundEnvironment
@@ -32,20 +31,19 @@ class KotlinBuilderProcessor : AbstractProcessor() {
 
     override fun process(set: MutableSet<out TypeElement>, roundEnv: RoundEnvironment): Boolean {
         roundEnv.getElementsAnnotatedWith(Builder::class.java)
-                .forEach { element ->
-                    generateClassFile(element)
-                }
+                .forEach(::generateClassFile)
         return true
     }
 
     private fun generateClassFile(targetElement: Element) {
-        val className = "${targetElement.simpleName}"
+        val className = targetElement.simpleName.toString()
         val fileName = "${className}Builder"
         val packageName = "${processingEnv.elementUtils.getPackageOf(targetElement)}"
         val targetClassName = targetElement.asType().asTypeName()
 
         val metaData = (targetElement.kotlinMetadata as KotlinClassMetadata).data
         val properties: List<ProtoBuf.Property> = metaData.classProto.propertyList
+
         val propertyTypes: List<PropertyType> = properties.map { property ->
             PropertyType(property, metaData)
         }
@@ -78,20 +76,13 @@ class KotlinBuilderProcessor : AbstractProcessor() {
             )
         }
 
-        val propertyNames = arrayListOf<String>().apply {
-            propertyTypes.forEach { propertyType ->
-                val propertyName = propertyType.fieldName
-                add(propertyName)
-                add(propertyName)
-            }
-        }
+        val arguments = propertyTypes.joinToString {"${it.fieldName} = ${it.fieldName}"}
 
         typeSpecBuilder.addFunction(
                 FunSpec.builder("build")
-                        .addStatement("return %T(" + Collections.nCopies(propertyTypes.size, "%N = %N")
-                                .joinToString() + ")",
-                                targetClassName,
-                                *propertyNames.toTypedArray()
+                        .addStatement(
+                                "return %T($arguments)",
+                                targetClassName
                         )
                         .build()
         )
@@ -106,19 +97,14 @@ class KotlinBuilderProcessor : AbstractProcessor() {
         val dslFunSpec = FunSpec.builder(fileName.decapitalize())
                 .addModifiers(KModifier.INLINE)
                 .addParameter(lambda)
-                .addStatement(
-                        "return "
-                                + "${fileName}Dsl("
-                                + ").apply{ f() }"
-                                + ".build()")
+                .addStatement("return ${fileName}Dsl().apply{ f() }.build()")
                 .build()
 
         val typeSpec = typeSpecBuilder.build()
 
-        val outputDirectory = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
-                ?.replace("kaptKotlin", "kapt")
-                ?.let { File(it) }
+        val option = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
                 ?: throw IllegalArgumentException("No output directory...")
+        val outputDirectory = File(option.replace("kaptKotlin", "kapt"))
 
         FileSpec.builder(packageName, typeSpec.name!!)
                 .addType(typeSpec)

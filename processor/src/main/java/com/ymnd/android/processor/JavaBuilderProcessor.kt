@@ -18,7 +18,9 @@ import javax.lang.model.element.TypeElement
 @AutoService(Processor::class)
 class JavaBuilderProcessor : AbstractProcessor() {
 
-    override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.latestSupported()
+    override fun getSupportedSourceVersion(): SourceVersion {
+        return SourceVersion.latestSupported()
+    }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
         return hashSetOf(
@@ -28,14 +30,12 @@ class JavaBuilderProcessor : AbstractProcessor() {
 
     override fun process(set: MutableSet<out TypeElement>, roundEnv: RoundEnvironment): Boolean {
         roundEnv.getElementsAnnotatedWith(Builder::class.java)
-                .forEach { element ->
-                    generateClassFile(element)
-                }
+                .forEach(::generateClassFile)
         return true
     }
 
     private fun generateClassFile(targetElement: Element) {
-        val className = "${targetElement.simpleName}"
+        val className = targetElement.simpleName.toString()
         val packageName = "${processingEnv.elementUtils.getPackageOf(targetElement)}"
         val fileName = "${className}Builder"
         val builderName = ClassName.get(packageName, fileName)
@@ -47,7 +47,7 @@ class JavaBuilderProcessor : AbstractProcessor() {
         targetElement.enclosedElements
                 .filter { it.kind == ElementKind.FIELD }
                 .forEach {
-                    val fieldName = "${it.simpleName}"
+                    val fieldName = it.simpleName.toString()
                     val fieldType = TypeName.get(it.asType())
                     val annotation =
                             if (it.isNullable()) {
@@ -83,8 +83,7 @@ class JavaBuilderProcessor : AbstractProcessor() {
                 .addModifiers(Modifier.PUBLIC)
                 .returns(targetName)
                 .addStatement(
-                        "return new \$T(" + Collections.nCopies(fieldNames.size, "\$N")
-                                .joinToString() + ")",
+                        "return new \$T(${Collections.nCopies(fieldNames.size, "\$N").joinToString()})",
                         targetName,
                         *fieldNames.toTypedArray()
                 )
